@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from sqlalchemy import text
 
-from app.config import settings
 from app.db.database import AsyncSessionLocal
+from app.routes.auth import router as auth_router
 
 
 app = FastAPI(
@@ -10,6 +10,9 @@ app = FastAPI(
     description="A simple authentication API using FastAPI and JWT.",
     version="1.0.0",
 )
+
+
+app.include_router(auth_router)
 
 
 @app.get("/")
@@ -23,11 +26,3 @@ async def health():
         await session.execute(text("SELECT 1"))
 
     return {"status": "healthy"}
-
-
-@app.get("/config-test")
-async def config_test():
-    return {
-        "algorithm": settings.JWT_ALGORITHM,
-        "token_expiration": settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES,
-    }
