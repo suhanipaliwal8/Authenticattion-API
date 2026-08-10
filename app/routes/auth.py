@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,6 +7,7 @@ from app.db.models import User
 from app.security import hash_password
 
 from app.security import create_access_token, hash_password, verify_password
+from uuid import UUID
 
 
 router = APIRouter(
@@ -82,4 +83,30 @@ async def login(
     return {
         "access_token": access_token,
         "token_type": "bearer",
+    }
+
+@router.get("/me")
+async def get_current_user(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    user_id = UUID(request.state.user_id)
+
+    result = await db.execute(
+        select(User).where(User.id == user_id)
+    )
+
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    return {
+        "id": str(user.id),
+        "username": user.username,
+        "email": user.email,
+        "created_at": user.created_at,
     }
