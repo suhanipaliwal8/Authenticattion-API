@@ -5,6 +5,10 @@ from app.db.database import AsyncSessionLocal
 from app.middleware.auth import AuthMiddleware
 from app.routes.auth import router as auth_router
 
+from app.logging_config import setup_logging
+from app.middleware.logging import LoggingMiddleware
+
+setup_logging()
 
 app = FastAPI(
     title="Authentication API",
@@ -12,8 +16,9 @@ app = FastAPI(
     version="1.0.0",
 )
 
-
 app.add_middleware(AuthMiddleware)
+app.add_middleware(LoggingMiddleware)
+
 
 app.include_router(auth_router)
 
@@ -25,7 +30,17 @@ async def root():
 
 @app.get("/health")
 async def health():
-    async with AsyncSessionLocal() as session:
-        await session.execute(text("SELECT 1"))
+    try:
+        async with AsyncSessionLocal() as session:
+            await session.execute(text("SELECT 1"))
 
-    return {"status": "healthy"}
+        return {
+            "status": "healthy",
+            "database": "connected",
+        }
+
+    except Exception:
+        return {
+            "status": "unhealthy",
+            "database": "disconnected",
+        }
