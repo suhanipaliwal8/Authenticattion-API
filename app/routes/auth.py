@@ -6,6 +6,8 @@ from app.db.database import get_db
 from app.db.models import User
 from app.security import hash_password
 
+from app.security import create_access_token, hash_password, verify_password
+
 
 router = APIRouter(
     prefix="/auth",
@@ -49,4 +51,35 @@ async def register(
         "username": user.username,
         "email": user.email,
         "created_at": user.created_at,
+    }
+
+@router.post("/login")
+async def login(
+    email: str,
+    password: str,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(User).where(User.email == email)
+    )
+
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
+
+    if not verify_password(password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
+
+    access_token = create_access_token(str(user.id))
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
     }
